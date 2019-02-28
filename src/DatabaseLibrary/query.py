@@ -21,7 +21,7 @@ class Query(object):
     Query handles all the querying done by the Database Library.
     """
 
-    def query(self, selectStatement, sansTran=False, returnAsDict=False):
+    def query(self,alias, selectStatement, sansTran=False, returnAsDict=False):
         """
         Uses the input `selectStatement` to query for the values that will be returned as a list of tuples. Set optional
         input `sansTran` to True to run command without an explicit transaction commit or rollback.
@@ -57,7 +57,8 @@ class Query(object):
         """
         cur = None
         try:
-            cur = self._dbconnection.cursor()
+            connection = self._cache.switch(alias)
+            cur = connection.cursor()
             logger.info('Executing : Query  |  %s ' % selectStatement)
             self.__execute_sql(cur, selectStatement)
             allRows = cur.fetchall()
@@ -77,9 +78,9 @@ class Query(object):
         finally:
             if cur:
                 if not sansTran:
-                    self._dbconnection.rollback()
+                    connection.rollback()
 
-    def row_count(self, selectStatement, sansTran=False):
+    def row_count(self,alias, selectStatement, sansTran=False):
         """
         Uses the input `selectStatement` to query the database and returns the number of rows from the query. Set
         optional input `sansTran` to True to run command without an explicit transaction commit or rollback.
@@ -108,7 +109,8 @@ class Query(object):
         """
         cur = None
         try:
-            cur = self._dbconnection.cursor()
+            connection = self._cache.switch(alias)
+            cur = connection.cursor()
             logger.info('Executing : Row Count  |  %s ' % selectStatement)
             self.__execute_sql(cur, selectStatement)
             data = cur.fetchall()
@@ -120,9 +122,9 @@ class Query(object):
         finally:
             if cur:
                 if not sansTran:
-                    self._dbconnection.rollback()
+                    connection.rollback()
 
-    def description(self, selectStatement, sansTran=False):
+    def description(self,alias, selectStatement, sansTran=False):
         """
         Uses the input `selectStatement` to query a table in the db which will be used to determine the description. Set
         optional input `sansTran` to True to run command without an explicit transaction commit or rollback.
@@ -145,7 +147,8 @@ class Query(object):
         """
         cur = None
         try:
-            cur = self._dbconnection.cursor()
+            connection = self._cache.switch(alias)
+            cur = connection.cursor()
             logger.info('Executing : Description  |  %s ' % selectStatement)
             self.__execute_sql(cur, selectStatement)
             description = list(cur.description)
@@ -156,9 +159,9 @@ class Query(object):
         finally:
             if cur:
                 if not sansTran:
-                    self._dbconnection.rollback()
+                    connection.rollback()
 
-    def delete_all_rows_from_table(self, tableName, sansTran=False):
+    def delete_all_rows_from_table(self,alias, tableName, sansTran=False):
         """
         Delete all the rows within a given table. Set optional input `sansTran` to True to run command without an
         explicit transaction commit or rollback.
@@ -180,21 +183,22 @@ class Query(object):
         cur = None
         selectStatement = ("DELETE FROM %s;" % tableName)
         try:
-            cur = self._dbconnection.cursor()
+            connection = self._cache.switch(alias)
+            cur = connection.cursor()
             logger.info('Executing : Delete All Rows From Table  |  %s ' % selectStatement)
             result = self.__execute_sql(cur, selectStatement)
             if result is not None:
                 if not sansTran:
-                    self._dbconnection.commit()
+                    connection.commit()
                 return result
             if not sansTran:
-                self._dbconnection.commit()
+                connection.commit()
         finally:
             if cur:
                 if not sansTran:
-                    self._dbconnection.rollback()
+                    connection.rollback()
 
-    def execute_sql_script(self, sqlScriptFileName, sansTran=False):
+    def execute_sql_script(self,alias, sqlScriptFileName, sansTran=False):
         """
         Executes the content of the `sqlScriptFileName` as SQL commands and
         returns number of rows affected. Useful for setting the database to
@@ -255,7 +259,8 @@ class Query(object):
         cur = None
         result = 0
         try:
-            cur = self._dbconnection.cursor()
+            connection = self._cache.switch(alias)
+            cur = connection.cursor()
             logger.info('Executing : Execute SQL Script  |  %s ' % sqlScriptFileName)
             sqlStatement = ''
             for line in sqlScriptFile:
@@ -287,14 +292,14 @@ class Query(object):
                 result = self.__execute_sql(cur, sqlStatement)
 
             if not sansTran:
-                self._dbconnection.commit()
+                connection.commit()
         finally:
             if cur:
                 if not sansTran:
-                    self._dbconnection.rollback()
+                    connection.rollback()
         return result
 
-    def execute_sql_string(self, sqlString, sansTran=False):
+    def execute_sql_string(self,alias, sqlString, sansTran=False):
         """
         Executes the sqlString as SQL commands  and returns number of rows
         affected. Useful to pass arguments to your sql. Set optional input
@@ -315,18 +320,19 @@ class Query(object):
         cur = None
         result = 0
         try:
-            cur = self._dbconnection.cursor()
+            connection = self._cache.switch(alias)
+            cur = connection.cursor()
             logger.info('Executing : Execute SQL String  |  %s ' % sqlString)
             result = self.__execute_sql(cur, sqlString)
             if not sansTran:
-                self._dbconnection.commit()
+                connection.commit()
         finally:
             if cur:
                 if not sansTran:
-                    self._dbconnection.rollback()
+                    connection.rollback()
         return result
 
-    def call_stored_procedure(self, spName, spParams=None, sansTran=False):
+    def call_stored_procedure(self,alias, spName, spParams=None, sansTran=False):
         """
         Uses the inputs of `spName` and 'spParams' to call a stored procedure. Set optional input `sansTran` to
         True to run command without an explicit transaction commit or rollback.
@@ -353,10 +359,11 @@ class Query(object):
             spParams = []
         cur = None
         try:
+            connection = self._cache.switch(alias)
             if self.db_api_module_name in ["cx_Oracle"]:
-                cur = self._dbconnection.cursor()
+                cur = connection.cursor()
             else:
-                cur = self._dbconnection.cursor(as_dict=False)
+                cur = connection.cursor(as_dict=False)
             PY3K = sys.version_info >= (3, 0)
             if not PY3K:
                 spName = spName.encode('ascii', 'ignore')
@@ -368,12 +375,12 @@ class Query(object):
                 #logger.info ( ' %s ' % (row))
                 retVal.append(row)
             if not sansTran:
-                self._dbconnection.commit()
+               connection.commit()
             return retVal
         finally:
             if cur:
                 if not sansTran:
-                    self._dbconnection.rollback()
+                    connection.rollback()
 
     def __execute_sql(self, cur, sqlStatement):
         return cur.execute(sqlStatement)

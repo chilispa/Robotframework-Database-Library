@@ -13,6 +13,8 @@
 #  limitations under the License.
 
 import importlib
+from robot.libraries.BuiltIn import BuiltIn
+from urllib.parse import urlparse
 
 try:
     import ConfigParser
@@ -20,7 +22,6 @@ except:
     import configparser as ConfigParser
 
 from robot.api import logger
-
 
 class ConnectionManager(object):
     """
@@ -31,10 +32,68 @@ class ConnectionManager(object):
         """
         Initializes _dbconnection to None.
         """
-        self._dbconnection = None
+
+        self._cache = robot.utils.ConnectionCache('No sessions created')
+        self.builtin = BuiltIn()
+        #self._dbconnection = None
         self.db_api_module_name = None
 
-    def connect_to_database(self, dbapiModuleName=None, dbName=None, dbUsername=None, dbPassword=None, dbHost=None, dbPort=None, dbCharset=None, dbConfigFile="./resources/db.cfg"):
+    def connect_to_database(self,alias, dbapiModuleName=None, dbName=None, dbUsername=None, dbPassword=None, dbHost=None, dbPort=None, dbCharset=None, dbConfigFile="./resources/db.cfg"):
+        
+        logger.info('Creating Db Connection using : alias=%s, dbapiModuleName=%s, dbName=%s, \
+                    dbUsername=%s, dbPassword=%s, dbHost=%s, dbPort=%s, dbCharset=%s, \
+                    dbConfigFile=%s ' % (alias, dbapiModuleName, dbName, dbUsername, dbPassword, dbHost,dbPort, dbCharset, dbConfigFile))
+
+        config = ConfigParser.ConfigParser()
+        config.read([dbConfigFile])
+
+        dbapiModuleName = dbapiModuleName or config.get('default', 'dbapiModuleName')
+        dbName = dbName or config.get('default', 'dbName')
+        dbUsername = dbUsername or config.get('default', 'dbUsername')
+        dbPassword = dbPassword if dbPassword is not None else config.get('default', 'dbPassword')
+        dbHost = dbHost or config.get('default', 'dbHost') or 'localhost'
+        dbPort = int(dbPort or config.get('default', 'dbPort'))
+
+        return self._connect_to_database(
+            alias,
+            dbapiModuleName,
+            dbName,
+            dbUsername,
+            dbPassword,
+            dbHost,
+            dbPort,
+            dbCharset,
+            dbConfigFile)
+    
+    def connect_by_url(self,alias,dbapiModuleName=None,url=None, dbCharset=None, dbConfigFile="./resources/db.cfg"):
+
+        logger.info('Creating Db Connection using : alias=%s, url=%s, dbapiModuleName=%s, dbCharset=%s, dbConfigFile=%s ' % (alias, url, dbapiModuleName, dbCharset, dbConfigFile))
+
+        config = ConfigParser.ConfigParser()
+        config.read([dbConfigFile])
+
+        dataConnection = urlparse(url)        
+
+        dbapiModuleName = dbapiModuleName or config.get('default', 'dbapiModuleName')                         
+        dbName = dataConnection.path[1:] or config.get('default', 'dbName')
+        dbUsername = dataConnection.username or config.get('default', 'dbUsername')
+        dbPassword = dataConnection.password if dataConnection.password is not None else config.get('default', 'dbPassword')
+        dbHost = dataConnection.hostname or config.get('default', 'dbHost') or 'localhost'
+        dbPort = int(dataConnection.port or config.get('default', 'dbPort'))
+
+
+        return self._connect_to_database(
+            alias,
+            dbapiModuleName,
+            dbName,
+            dbUsername,
+            dbPassword,
+            dbHost,
+            dbPort,
+            dbCharset,
+            dbConfigFile)
+
+    def _connect_to_database(self,alias, dbapiModuleName=None, dbName=None, dbUsername=None, dbPassword=None, dbHost=None, dbPort=None, dbCharset=None, dbConfigFile="./resources/db.cfg"):
         """
         Loads the DB API 2.0 module given `dbapiModuleName` then uses it to
         connect to the database using `dbName`, `dbUsername`, and `dbPassword`.
@@ -75,15 +134,7 @@ class ConnectionManager(object):
         | Connect To Database | psycopg2 | my_db_test |
         """
 
-        config = ConfigParser.ConfigParser()
-        config.read([dbConfigFile])
 
-        dbapiModuleName = dbapiModuleName or config.get('default', 'dbapiModuleName')
-        dbName = dbName or config.get('default', 'dbName')
-        dbUsername = dbUsername or config.get('default', 'dbUsername')
-        dbPassword = dbPassword if dbPassword is not None else config.get('default', 'dbPassword')
-        dbHost = dbHost or config.get('default', 'dbHost') or 'localhost'
-        dbPort = int(dbPort or config.get('default', 'dbPort'))
 
         if dbapiModuleName == "excel" or dbapiModuleName == "excelrw":
             self.db_api_module_name = "pyodbc"
@@ -94,43 +145,52 @@ class ConnectionManager(object):
         if dbapiModuleName in ["MySQLdb", "pymysql"]:
             dbPort = dbPort or 3306
             logger.info('Connecting using : %s.connect(db=%s, user=%s, passwd=%s, host=%s, port=%s, charset=%s) ' % (dbapiModuleName, dbName, dbUsername, dbPassword, dbHost, dbPort, dbCharset))
-            self._dbconnection = db_api_2.connect(db=dbName, user=dbUsername, passwd=dbPassword, host=dbHost, port=dbPort, charset=dbCharset)
+            dbconnection = db_api_2.connect(db=dbName, user=dbUsername, passwd=dbPassword, host=dbHost, port=dbPort, charset=dbCharset)
         elif dbapiModuleName in ["psycopg2"]:
             dbPort = dbPort or 5432
             logger.info('Connecting using : %s.connect(database=%s, user=%s, password=%s, host=%s, port=%s) ' % (dbapiModuleName, dbName, dbUsername, dbPassword, dbHost, dbPort))
-            self._dbconnection = db_api_2.connect(database=dbName, user=dbUsername, password=dbPassword, host=dbHost, port=dbPort)
+            dbconnection = db_api_2.connect(database=dbName, user=dbUsername, password=dbPassword, host=dbHost, port=dbPort)
         elif dbapiModuleName in ["pyodbc", "pypyodbc"]:
             dbPort = dbPort or 1433
             logger.info('Connecting using : %s.connect(DRIVER={SQL Server};SERVER=%s,%s;DATABASE=%s;UID=%s;PWD=%s)' % (dbapiModuleName, dbHost, dbPort, dbName, dbUsername, dbPassword))
-            self._dbconnection = db_api_2.connect('DRIVER={SQL Server};SERVER=%s,%s;DATABASE=%s;UID=%s;PWD=%s' % (dbHost, dbPort, dbName, dbUsername, dbPassword))
+            dbconnection = db_api_2.connect('DRIVER={SQL Server};SERVER=%s,%s;DATABASE=%s;UID=%s;PWD=%s' % (dbHost, dbPort, dbName, dbUsername, dbPassword))
         elif dbapiModuleName in ["excel"]:
             logger.info(
                 'Connecting using : %s.connect(DRIVER={Microsoft Excel Driver (*.xls, *.xlsx, *.xlsm, *.xlsb)};DBQ=%s;ReadOnly=1;Extended Properties="Excel 8.0;HDR=YES";)' % (
                 dbapiModuleName, dbName))
-            self._dbconnection = db_api_2.connect(
+            dbconnection = db_api_2.connect(
                 'DRIVER={Microsoft Excel Driver (*.xls, *.xlsx, *.xlsm, *.xlsb)};DBQ=%s;ReadOnly=1;Extended Properties="Excel 8.0;HDR=YES";)' % (
                     dbName), autocommit=True)
         elif dbapiModuleName in ["excelrw"]:
             logger.info(
                 'Connecting using : %s.connect(DRIVER={Microsoft Excel Driver (*.xls, *.xlsx, *.xlsm, *.xlsb)};DBQ=%s;ReadOnly=0;Extended Properties="Excel 8.0;HDR=YES";)' % (
                 dbapiModuleName, dbName))
-            self._dbconnection = db_api_2.connect(
+            dbconnection = db_api_2.connect(
                 'DRIVER={Microsoft Excel Driver (*.xls, *.xlsx, *.xlsm, *.xlsb)};DBQ=%s;ReadOnly=0;Extended Properties="Excel 8.0;HDR=YES";)' % (
                     dbName), autocommit=True)
         elif dbapiModuleName in ["ibm_db", "ibm_db_dbi"]:
             dbPort = dbPort or 50000
             logger.info('Connecting using : %s.connect(DATABASE=%s;HOSTNAME=%s;PORT=%s;PROTOCOL=TCPIP;UID=%s;PWD=%s;) ' % (dbapiModuleName, dbName, dbHost, dbPort, dbUsername, dbPassword))
-            self._dbconnection = db_api_2.connect('DATABASE=%s;HOSTNAME=%s;PORT=%s;PROTOCOL=TCPIP;UID=%s;PWD=%s;' % (dbName, dbHost, dbPort, dbUsername, dbPassword), '', '')
+            dbconnection = db_api_2.connect('DATABASE=%s;HOSTNAME=%s;PORT=%s;PROTOCOL=TCPIP;UID=%s;PWD=%s;' % (dbName, dbHost, dbPort, dbUsername, dbPassword), '', '')
         elif dbapiModuleName in ["cx_Oracle"]:
             dbPort = dbPort or 1521
             oracle_dsn =  db_api_2.makedsn(host=dbHost, port=dbPort, service_name=dbName)
             logger.info('Connecting using: %s.connect(user=%s, password=%s, dsn=%s) ' % (dbapiModuleName, dbUsername, dbPassword, oracle_dsn))
-            self._dbconnection = db_api_2.connect(user=dbUsername, password=dbPassword, dsn=oracle_dsn)
+            dbconnection = db_api_2.connect(user=dbUsername, password=dbPassword, dsn=oracle_dsn)
         else:
             logger.info('Connecting using : %s.connect(database=%s, user=%s, password=%s, host=%s, port=%s) ' % (dbapiModuleName, dbName, dbUsername, dbPassword, dbHost, dbPort))
-            self._dbconnection = db_api_2.connect(database=dbName, user=dbUsername, password=dbPassword, host=dbHost, port=dbPort)
+            dbconnection = db_api_2.connect(database=dbName, user=dbUsername, password=dbPassword, host=dbHost, port=dbPort)
 
-    def connect_to_database_using_custom_params(self, dbapiModuleName=None, db_connect_string=''):
+
+        self._cache.register(dbconnection, alias=alias)
+
+    def connect_to_database_using_custom_params(self, alias, dbapiModuleName=None, db_connect_string=''):
+
+        logger.info('Creating Db Connection using : alias=%s, dbapiModuleName=%s, db_connect_string=%s' % (alias, dbapiModuleName, db_connect_string))
+
+        return self._connect_to_database_using_custom_params(alias, dbapiModuleName, db_connect_string)
+
+    def _connect_to_database_using_custom_params(self, alias, dbapiModuleName=None, db_connect_string=''):
         """
         Loads the DB API 2.0 module given `dbapiModuleName` then uses it to
         connect to the database using the map string `db_custom_param_string`.
@@ -148,9 +208,11 @@ class ConnectionManager(object):
 
         self.db_api_module_name = dbapiModuleName
         logger.info('Executing : Connect To Database Using Custom Params : %s.connect(%s) ' % (dbapiModuleName, db_connect_string))
-        self._dbconnection = eval(db_connect_string)
+        dbconnection = eval(db_connect_string)
 
-    def disconnect_from_database(self):
+        self._cache.register(dbconnection, alias=alias)
+
+    def disconnect_from_database(self,alias):
         """
         Disconnects from the database.
 
@@ -158,9 +220,11 @@ class ConnectionManager(object):
         | Disconnect From Database | # disconnects from current connection to the database |
         """
         logger.info('Executing : Disconnect From Database')
-        self._dbconnection.close()
+        connection = self._cache.switch(alias)
+        connection.close()
 
-    def set_auto_commit(self, autoCommit=True):
+
+    def set_auto_commit(self, alias,autoCommit=True):
         """
         Turn the autocommit on the database connection ON or OFF. 
         
@@ -177,4 +241,7 @@ class ConnectionManager(object):
         | Set Auto Commit | False
         """
         logger.info('Executing : Set Auto Commit')
-        self._dbconnection.autocommit = autoCommit
+        connection = self._cache.switch(alias)
+        connection.autocommit = autoCommit
+        #self._cache.register(connection, alias=alias)
+
