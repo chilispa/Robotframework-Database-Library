@@ -77,7 +77,7 @@ class Query(object):
 
             return allRows
         except RuntimeError as Error:
-            logger.Error('Connessione %s chiusa' % alias)
+            logger.error('Connessione %s chiusa' % alias)
         finally:
             if cur:
                 if not sansTran:
