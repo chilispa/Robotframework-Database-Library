@@ -13,6 +13,7 @@
 #  limitations under the License.
 
 import importlib
+import robot
 from robot.libraries.BuiltIn import BuiltIn
 from urllib.parse import urlparse
 
@@ -33,7 +34,7 @@ class ConnectionManager(object):
         Initializes _dbconnection to None.
         """
 
-        self._cache = robot.utils.ConnectionCache('No sessions created')
+        self._cache = robot.utils.ConnectionCache('No connection created')
         self.builtin = BuiltIn()
         #self._dbconnection = None
         self.db_api_module_name = None
@@ -133,9 +134,7 @@ class ConnectionManager(object):
         | # uses explicit `dbapiModuleName` and `dbName` but uses the `dbUsername` and `dbPassword` in './resources/db.cfg' |
         | Connect To Database | psycopg2 | my_db_test |
         """
-
-
-
+        
         if dbapiModuleName == "excel" or dbapiModuleName == "excelrw":
             self.db_api_module_name = "pyodbc"
             db_api_2 = importlib.import_module("pyodbc")

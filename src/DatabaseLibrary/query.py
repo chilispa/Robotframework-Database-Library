@@ -75,6 +75,8 @@ class Query(object):
                 return mappedRows
 
             return allRows
+        except Exception as e:
+            self.builtin.fail("Query failed:   %s",e)
         finally:
             if cur:
                 if not sansTran:
