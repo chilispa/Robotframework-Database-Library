@@ -76,8 +76,6 @@ class Query(object):
                 return mappedRows
 
             return allRows
-        except Exception as e:
-            logger.info('Query failed:   %s' % str(e))
         finally:
             if cur:
                 if not sansTran:
