@@ -76,8 +76,8 @@ class Query(object):
                 return mappedRows
 
             return allRows
-        except RuntimeError as Error:
-            logger.error('Connessione %s chiusa' % alias)
+        except InterfaceError as Error:
+            logger.error('Connection %s Already Close' % alias)
         finally:
             if cur:
                 if not sansTran:
