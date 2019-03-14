@@ -76,7 +76,7 @@ class Query(object):
                 return mappedRows
 
             return allRows
-        except InterfaceError as Error:
+        except Exception as Error:
             logger.error('Connection %s Already Close' % alias)
         finally:
             if cur:
