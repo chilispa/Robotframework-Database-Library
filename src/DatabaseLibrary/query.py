@@ -14,7 +14,8 @@
 
 import sys
 from robot.api import logger
-
+import robot
+from robot.libraries.BuiltIn import BuiltIn
 
 class Query(object):
     """
@@ -76,7 +77,7 @@ class Query(object):
 
             return allRows
         except Exception as e:
-            self.builtin.fail("Query failed:   %s",e)
+            logger.info('Query failed:   %s' % str(e))
         finally:
             if cur:
                 if not sansTran:
