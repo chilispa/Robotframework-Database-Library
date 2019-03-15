@@ -15,6 +15,7 @@
 import importlib
 import robot
 from robot.libraries.BuiltIn import BuiltIn
+from robot.utils.asserts import fail
 from urllib.parse import urlparse
 
 try:
@@ -35,7 +36,8 @@ class ConnectionManager(object):
         """
 
         self._cache = robot.utils.ConnectionCache('No connection created')
-        self.builtin = BuiltIn()
+        self.builtin = BuiltIn()      
+        
         #self._dbconnection = None
         self.db_api_module_name = None
 
@@ -134,54 +136,60 @@ class ConnectionManager(object):
         | # uses explicit `dbapiModuleName` and `dbName` but uses the `dbUsername` and `dbPassword` in './resources/db.cfg' |
         | Connect To Database | psycopg2 | my_db_test |
         """
-        
-        if dbapiModuleName == "excel" or dbapiModuleName == "excelrw":
-            self.db_api_module_name = "pyodbc"
-            db_api_2 = importlib.import_module("pyodbc")
-        else:
-            self.db_api_module_name = dbapiModuleName
-            db_api_2 = importlib.import_module(dbapiModuleName)
-        if dbapiModuleName in ["MySQLdb", "pymysql"]:
-            dbPort = dbPort or 3306
-            logger.info('Connecting using : %s.connect(db=%s, user=%s, passwd=%s, host=%s, port=%s, charset=%s) ' % (dbapiModuleName, dbName, dbUsername, dbPassword, dbHost, dbPort, dbCharset))
-            dbconnection = db_api_2.connect(db=dbName, user=dbUsername, passwd=dbPassword, host=dbHost, port=dbPort, charset=dbCharset)
-        elif dbapiModuleName in ["psycopg2"]:
-            dbPort = dbPort or 5432
-            logger.info('Connecting using : %s.connect(database=%s, user=%s, password=%s, host=%s, port=%s) ' % (dbapiModuleName, dbName, dbUsername, dbPassword, dbHost, dbPort))
-            dbconnection = db_api_2.connect(database=dbName, user=dbUsername, password=dbPassword, host=dbHost, port=dbPort)
-        elif dbapiModuleName in ["pyodbc", "pypyodbc"]:
-            dbPort = dbPort or 1433
-            logger.info('Connecting using : %s.connect(DRIVER={SQL Server};SERVER=%s,%s;DATABASE=%s;UID=%s;PWD=%s)' % (dbapiModuleName, dbHost, dbPort, dbName, dbUsername, dbPassword))
-            dbconnection = db_api_2.connect('DRIVER={SQL Server};SERVER=%s,%s;DATABASE=%s;UID=%s;PWD=%s' % (dbHost, dbPort, dbName, dbUsername, dbPassword))
-        elif dbapiModuleName in ["excel"]:
-            logger.info(
-                'Connecting using : %s.connect(DRIVER={Microsoft Excel Driver (*.xls, *.xlsx, *.xlsm, *.xlsb)};DBQ=%s;ReadOnly=1;Extended Properties="Excel 8.0;HDR=YES";)' % (
-                dbapiModuleName, dbName))
-            dbconnection = db_api_2.connect(
-                'DRIVER={Microsoft Excel Driver (*.xls, *.xlsx, *.xlsm, *.xlsb)};DBQ=%s;ReadOnly=1;Extended Properties="Excel 8.0;HDR=YES";)' % (
-                    dbName), autocommit=True)
-        elif dbapiModuleName in ["excelrw"]:
-            logger.info(
-                'Connecting using : %s.connect(DRIVER={Microsoft Excel Driver (*.xls, *.xlsx, *.xlsm, *.xlsb)};DBQ=%s;ReadOnly=0;Extended Properties="Excel 8.0;HDR=YES";)' % (
-                dbapiModuleName, dbName))
-            dbconnection = db_api_2.connect(
-                'DRIVER={Microsoft Excel Driver (*.xls, *.xlsx, *.xlsm, *.xlsb)};DBQ=%s;ReadOnly=0;Extended Properties="Excel 8.0;HDR=YES";)' % (
-                    dbName), autocommit=True)
-        elif dbapiModuleName in ["ibm_db", "ibm_db_dbi"]:
-            dbPort = dbPort or 50000
-            logger.info('Connecting using : %s.connect(DATABASE=%s;HOSTNAME=%s;PORT=%s;PROTOCOL=TCPIP;UID=%s;PWD=%s;) ' % (dbapiModuleName, dbName, dbHost, dbPort, dbUsername, dbPassword))
-            dbconnection = db_api_2.connect('DATABASE=%s;HOSTNAME=%s;PORT=%s;PROTOCOL=TCPIP;UID=%s;PWD=%s;' % (dbName, dbHost, dbPort, dbUsername, dbPassword), '', '')
-        elif dbapiModuleName in ["cx_Oracle"]:
-            dbPort = dbPort or 1521
-            oracle_dsn =  db_api_2.makedsn(host=dbHost, port=dbPort, service_name=dbName)
-            logger.info('Connecting using: %s.connect(user=%s, password=%s, dsn=%s) ' % (dbapiModuleName, dbUsername, dbPassword, oracle_dsn))
-            dbconnection = db_api_2.connect(user=dbUsername, password=dbPassword, dsn=oracle_dsn)
-        else:
-            logger.info('Connecting using : %s.connect(database=%s, user=%s, password=%s, host=%s, port=%s) ' % (dbapiModuleName, dbName, dbUsername, dbPassword, dbHost, dbPort))
-            dbconnection = db_api_2.connect(database=dbName, user=dbUsername, password=dbPassword, host=dbHost, port=dbPort)
+        try:
+
+            if dbapiModuleName == "excel" or dbapiModuleName == "excelrw":
+                self.db_api_module_name = "pyodbc"
+                db_api_2 = importlib.import_module("pyodbc")
+            else:
+                self.db_api_module_name = dbapiModuleName
+                db_api_2 = importlib.import_module(dbapiModuleName)
+            if dbapiModuleName in ["MySQLdb", "pymysql"]:
+                dbPort = dbPort or 3306
+                logger.info('Connecting using : %s.connect(db=%s, user=%s, passwd=%s, host=%s, port=%s, charset=%s) ' % (dbapiModuleName, dbName, dbUsername, dbPassword, dbHost, dbPort, dbCharset))
+                dbconnection = db_api_2.connect(db=dbName, user=dbUsername, passwd=dbPassword, host=dbHost, port=dbPort, charset=dbCharset)
+            elif dbapiModuleName in ["psycopg2"]:
+                dbPort = dbPort or 5432
+                logger.info('Connecting using : %s.connect(database=%s, user=%s, password=%s, host=%s, port=%s) ' % (dbapiModuleName, dbName, dbUsername, dbPassword, dbHost, dbPort))
+                dbconnection = db_api_2.connect(database=dbName, user=dbUsername, password=dbPassword, host=dbHost, port=dbPort)
+            elif dbapiModuleName in ["pyodbc", "pypyodbc"]:
+                dbPort = dbPort or 1433
+                logger.info('Connecting using : %s.connect(DRIVER={SQL Server};SERVER=%s,%s;DATABASE=%s;UID=%s;PWD=%s)' % (dbapiModuleName, dbHost, dbPort, dbName, dbUsername, dbPassword))
+                dbconnection = db_api_2.connect('DRIVER={SQL Server};SERVER=%s,%s;DATABASE=%s;UID=%s;PWD=%s' % (dbHost, dbPort, dbName, dbUsername, dbPassword))
+            elif dbapiModuleName in ["excel"]:
+                logger.info(
+                    'Connecting using : %s.connect(DRIVER={Microsoft Excel Driver (*.xls, *.xlsx, *.xlsm, *.xlsb)};DBQ=%s;ReadOnly=1;Extended Properties="Excel 8.0;HDR=YES";)' % (
+                    dbapiModuleName, dbName))
+                dbconnection = db_api_2.connect(
+                    'DRIVER={Microsoft Excel Driver (*.xls, *.xlsx, *.xlsm, *.xlsb)};DBQ=%s;ReadOnly=1;Extended Properties="Excel 8.0;HDR=YES";)' % (
+                        dbName), autocommit=True)
+            elif dbapiModuleName in ["excelrw"]:
+                logger.info(
+                    'Connecting using : %s.connect(DRIVER={Microsoft Excel Driver (*.xls, *.xlsx, *.xlsm, *.xlsb)};DBQ=%s;ReadOnly=0;Extended Properties="Excel 8.0;HDR=YES";)' % (
+                    dbapiModuleName, dbName))
+                dbconnection = db_api_2.connect(
+                    'DRIVER={Microsoft Excel Driver (*.xls, *.xlsx, *.xlsm, *.xlsb)};DBQ=%s;ReadOnly=0;Extended Properties="Excel 8.0;HDR=YES";)' % (
+                        dbName), autocommit=True)
+            elif dbapiModuleName in ["ibm_db", "ibm_db_dbi"]:
+                dbPort = dbPort or 50000
+                logger.info('Connecting using : %s.connect(DATABASE=%s;HOSTNAME=%s;PORT=%s;PROTOCOL=TCPIP;UID=%s;PWD=%s;) ' % (dbapiModuleName, dbName, dbHost, dbPort, dbUsername, dbPassword))
+                dbconnection = db_api_2.connect('DATABASE=%s;HOSTNAME=%s;PORT=%s;PROTOCOL=TCPIP;UID=%s;PWD=%s;' % (dbName, dbHost, dbPort, dbUsername, dbPassword), '', '')
+            elif dbapiModuleName in ["cx_Oracle"]:
+                dbPort = dbPort or 1521
+                oracle_dsn =  db_api_2.makedsn(host=dbHost, port=dbPort, service_name=dbName)
+                logger.info('Connecting using: %s.connect(user=%s, password=%s, dsn=%s) ' % (dbapiModuleName, dbUsername, dbPassword, oracle_dsn))
+                dbconnection = db_api_2.connect(user=dbUsername, password=dbPassword, dsn=oracle_dsn)
+            else:
+                logger.info('Connecting using : %s.connect(database=%s, user=%s, password=%s, host=%s, port=%s) ' % (dbapiModuleName, dbName, dbUsername, dbPassword, dbHost, dbPort))
+                dbconnection = db_api_2.connect(database=dbName, user=dbUsername, password=dbPassword, host=dbHost, port=dbPort)
 
 
-        self._cache.register(dbconnection, alias=alias)
+            self._cache.register(dbconnection, alias=alias)
+
+        except Exception as Err:
+            err_msg = ('DbConnection : %s : %s' % (alias,Err))           
+            fail(err_msg)
+            
 
     def connect_to_database_using_custom_params(self, alias, dbapiModuleName=None, db_connect_string=''):
 
