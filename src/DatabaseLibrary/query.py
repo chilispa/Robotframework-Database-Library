@@ -68,17 +68,21 @@ class Query(object):
                 mappedRows = []
                 col_names = [c[0] for c in cur.description]
 
+
                 for rowIdx in range(len(allRows)):
                     d = {}
                     for colIdx in range(len(allRows[rowIdx])):
                         d[col_names[colIdx]] = allRows[rowIdx][colIdx]
                     mappedRows.append(d)
-                return mappedRows
+                return 'DONE',mappedRows
 
-            return allRows
+            return 'DONE',allRows
+        except  Exception as Err:
+            logger.info('Error: %s' % Err)
+            return  'ERROR',None
         finally:
             if cur:
-                if not sansTran:
+                if not sansTran:                    
                     connection.rollback()
 
     def row_count(self,alias, selectStatement, sansTran=False):
@@ -118,8 +122,11 @@ class Query(object):
             if self.db_api_module_name in ["sqlite3", "ibm_db", "ibm_db_dbi", "pyodbc"]:
                 rowCount = len(data)
             else:
-                rowCount = cur.rowcount
-            return rowCount
+                rowCount = cur.rowcount            
+            return 'DONE',rowCount
+        except  Exception as Err:
+            logger.info('Error: %s' % Err)
+            return  'ERROR',None            
         finally:
             if cur:
                 if not sansTran:
