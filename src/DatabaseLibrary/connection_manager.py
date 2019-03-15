@@ -188,7 +188,7 @@ class ConnectionManager(object):
 
         except Exception as Err:
             err_msg = ('DbConnection : %s : %s' % (alias,Err))           
-            fail(err_msg)
+            raise AssertionError(err_msg)
             
 
     def connect_to_database_using_custom_params(self, alias, dbapiModuleName=None, db_connect_string=''):

@@ -117,12 +117,17 @@ class Query(object):
             connection = self._cache.switch(alias)
             cur = connection.cursor()
             logger.info('Executing : Row Count  |  %s ' % selectStatement)
+            
             self.__execute_sql(cur, selectStatement)
             data = cur.fetchall()
+            logger.info(data)
+            
             if self.db_api_module_name in ["sqlite3", "ibm_db", "ibm_db_dbi", "pyodbc"]:
                 rowCount = len(data)
             else:
-                rowCount = cur.rowcount            
+                rowCount = cur.rowcount 
+
+            logger.info(rowCount)               
             return 'DONE',rowCount
         except  Exception as Err:
             logger.info('Error: %s' % Err)

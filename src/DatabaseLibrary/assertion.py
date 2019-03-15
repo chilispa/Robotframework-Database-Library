@@ -20,7 +20,7 @@ class Assertion(object):
     Assertion handles all the assertions of Database Library.
     """
 
-    def check_if_exists_in_database(self, selectStatement, sansTran=False):
+    def check_if_exists_in_database(self,alias, selectStatement, sansTran=False):
         """
         Check if any row would be returned by given the input `selectStatement`. If there are no results, then this will
         throw an AssertionError. Set optional input `sansTran` to True to run command without an explicit transaction
@@ -42,11 +42,11 @@ class Assertion(object):
         | Check If Exists In Database | SELECT id FROM person WHERE first_name = 'John' | True |
         """
         logger.info ('Executing : Check If Exists In Database  |  %s ' % selectStatement)
-        if not self.query(selectStatement, sansTran):
+        if not self.query(alias,selectStatement, sansTran):
             raise AssertionError("Expected to have have at least one row from '%s' "
                                  "but got 0 rows." % selectStatement)
 
-    def check_if_not_exists_in_database(self, selectStatement, sansTran=False):
+    def check_if_not_exists_in_database(self,alias, selectStatement, sansTran=False):
         """
         This is the negation of `check_if_exists_in_database`.
 
@@ -70,12 +70,12 @@ class Assertion(object):
         | Check If Not Exists In Database | SELECT id FROM person WHERE first_name = 'John' | True |
         """
         logger.info('Executing : Check If Not Exists In Database  |  %s ' % selectStatement)
-        queryResults = self.query(selectStatement, sansTran)
+        queryResults = self.query(alias,selectStatement, sansTran)
         if queryResults:
             raise AssertionError("Expected to have have no rows from '%s' "
                                  "but got some rows : %s." % (selectStatement, queryResults))
 
-    def row_count_is_0(self, selectStatement, sansTran=False):
+    def row_count_is_0(self,alias, selectStatement, sansTran=False):
         """
         Check if any rows are returned from the submitted `selectStatement`. If there are, then this will throw an
         AssertionError. Set optional input `sansTran` to True to run command without an explicit transaction commit or
@@ -97,12 +97,12 @@ class Assertion(object):
         | Row Count is 0 | SELECT id FROM person WHERE first_name = 'John' | True |
         """
         logger.info('Executing : Row Count Is 0  |  %s ' % selectStatement)
-        num_rows = self.row_count(selectStatement, sansTran)
+        num_rows = self.row_count(alias,selectStatement, sansTran)
         if num_rows > 0:
             raise AssertionError("Expected zero rows to be returned from '%s' "
                                  "but got rows back. Number of rows returned was %s" % (selectStatement, num_rows))
 
-    def row_count_is_equal_to_x(self, selectStatement, numRows, sansTran=False):
+    def row_count_is_equal_to_x(self,alias, selectStatement, numRows, sansTran=False):
         """
         Check if the number of rows returned from `selectStatement` is equal to the value submitted. If not, then this
         will throw an AssertionError. Set optional input `sansTran` to True to run command without an explicit
@@ -125,12 +125,12 @@ class Assertion(object):
         | Row Count Is Equal To X | SELECT id FROM person WHERE first_name = 'John' | 0 | True |
         """
         logger.info('Executing : Row Count Is Equal To X  |  %s  |  %s ' % (selectStatement, numRows))
-        num_rows = self.row_count(selectStatement, sansTran)
+        num_rows = self.row_count(alias,selectStatement, sansTran)
         if num_rows != int(numRows.encode('ascii')):
             raise AssertionError("Expected same number of rows to be returned from '%s' "
                                  "than the returned rows of %s" % (selectStatement, num_rows))
 
-    def row_count_is_greater_than_x(self, selectStatement, numRows, sansTran=False):
+    def row_count_is_greater_than_x(self,alias, selectStatement, numRows, sansTran=False):
         """
         Check if the number of rows returned from `selectStatement` is greater than the value submitted. If not, then
         this will throw an AssertionError. Set optional input `sansTran` to True to run command without an explicit
@@ -153,12 +153,12 @@ class Assertion(object):
         | Row Count Is Greater Than X | SELECT id FROM person | 1 | True |
         """
         logger.info('Executing : Row Count Is Greater Than X  |  %s  |  %s ' % (selectStatement, numRows))
-        num_rows = self.row_count(selectStatement, sansTran)
+        num_rows = self.row_count(alias,selectStatement, sansTran)
         if num_rows <= int(numRows.encode('ascii')):
             raise AssertionError("Expected more rows to be returned from '%s' "
                                  "than the returned rows of %s" % (selectStatement, num_rows))
 
-    def row_count_is_less_than_x(self, selectStatement, numRows, sansTran=False):
+    def row_count_is_less_than_x(self,alias, selectStatement, numRows, sansTran=False):
         """
         Check if the number of rows returned from `selectStatement` is less than the value submitted. If not, then this
         will throw an AssertionError. Set optional input `sansTran` to True to run command without an explicit
@@ -181,12 +181,13 @@ class Assertion(object):
         | Row Count Is Less Than X | SELECT id FROM person | 3 | True |
         """
         logger.info('Executing : Row Count Is Less Than X  |  %s  |  %s ' % (selectStatement, numRows))
-        num_rows = self.row_count(selectStatement, sansTran)
+        status,num_rows = self.row_count(alias,selectStatement, sansTran)
+        logger.info('Row Num: %s ' % str(num_rows))
         if num_rows >= int(numRows.encode('ascii')):
             raise AssertionError("Expected less rows to be returned from '%s' "
                                  "than the returned rows of %s" % (selectStatement, num_rows))
 
-    def table_must_exist(self, tableName, sansTran=False):
+    def table_must_exist(self,alias, tableName, sansTran=False):
         """
         Check if the table given exists in the database. Set optional input `sansTran` to True to run command without an
         explicit transaction commit or rollback.
@@ -212,6 +213,7 @@ class Assertion(object):
             selectStatement = ("SELECT name FROM SYSIBM.SYSTABLES WHERE type='T' AND name=UPPER('%s')" % tableName)
         else:
             selectStatement = ("SELECT * FROM information_schema.tables WHERE table_name='%s'" % tableName)
-        num_rows = self.row_count(selectStatement, sansTran)
+        status,num_rows = self.row_count(alias,selectStatement, sansTran)
+        logger.info('Row Num: %s ' % str(num_rows))
         if num_rows == 0:
             raise AssertionError("Table '%s' does not exist in the db" % tableName)
