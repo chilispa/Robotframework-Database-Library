@@ -35,8 +35,7 @@ class ConnectionManager(object):
         Initializes _dbconnection to None.
         """
         self._cache = robot.utils.ConnectionCache('No connection created')
-        self.builtin = BuiltIn()      
-        self.db_api_module_name = None
+        self.builtin = BuiltIn()              
     
     def _push_cache (self, alias, connection,db_api_module_name):
         obj_dict = {'connection':connection, 'module':db_api_module_name}        
@@ -148,11 +147,12 @@ class ConnectionManager(object):
         try:
 
             if dbapiModuleName == "excel" or dbapiModuleName == "excelrw":
-                self.db_api_module_name = "pyodbc"
+                db_api_module_name = "pyodbc"
                 db_api_2 = importlib.import_module("pyodbc")
             else:
-                self.db_api_module_name = dbapiModuleName
+                db_api_module_name = dbapiModuleName
                 db_api_2 = importlib.import_module(dbapiModuleName)
+
             if dbapiModuleName in ["MySQLdb", "pymysql"]:
                 dbPort = dbPort or 3306
                 logger.info('Connecting using : %s.connect(db=%s, user=%s, passwd=%s, host=%s, port=%s, charset=%s) ' % (dbapiModuleName, dbName, dbUsername, dbPassword, dbHost, dbPort, dbCharset))
@@ -192,9 +192,7 @@ class ConnectionManager(object):
                 logger.info('Connecting using : %s.connect(database=%s, user=%s, password=%s, host=%s, port=%s) ' % (dbapiModuleName, dbName, dbUsername, dbPassword, dbHost, dbPort))
                 dbconnection = db_api_2.connect(database=dbName, user=dbUsername, password=dbPassword, host=dbHost, port=dbPort)
 
-
-            self._push_cache(alias, dbconnection,dbapiModuleName)
-            #self._cache.register(dbconnection, alias=alias)
+            self._push_cache(alias, dbconnection,db_api_module_name)            
 
         except Exception as Err:
             err_msg = ('DbConnection : %s : %s' % (alias,Err))           
@@ -204,7 +202,7 @@ class ConnectionManager(object):
     def connect_to_database_using_custom_params(self, alias, dbapiModuleName=None, db_connect_string=''):
 
         logger.info('Creating Db Connection using : alias=%s, dbapiModuleName=%s, db_connect_string=%s' % (alias, dbapiModuleName, db_connect_string))
-
+        
         return self._connect_to_database_using_custom_params(alias, dbapiModuleName, db_connect_string)
 
     def _connect_to_database_using_custom_params(self, alias, dbapiModuleName=None, db_connect_string=''):
@@ -222,8 +220,7 @@ class ConnectionManager(object):
         db_api_2 = importlib.import_module(dbapiModuleName)
 
         db_connect_string = 'db_api_2.connect(%s)' % db_connect_string
-
-        self.db_api_module_name = dbapiModuleName
+        
         logger.info('Executing : Connect To Database Using Custom Params : %s.connect(%s) ' % (dbapiModuleName, db_connect_string))
         dbconnection = eval(db_connect_string)
 
@@ -260,5 +257,5 @@ class ConnectionManager(object):
         logger.info('Executing : Set Auto Commit')
         connection,module_api = self._get_cache(alias)
         connection.autocommit = autoCommit
-        #self._cache.register(connection, alias=alias)
+        self._push_cache(alias, connection,module_api)   
 
