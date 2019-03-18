@@ -58,7 +58,7 @@ class Query(object):
         """
         cur = None
         try:
-            connection = self._cache.switch(alias)
+            connection,module_api = self._get_cache(alias)
             cur = connection.cursor()
             logger.info('Executing : Query  |  %s ' % selectStatement)
             self.__execute_sql(cur, selectStatement)
@@ -74,15 +74,12 @@ class Query(object):
                     for colIdx in range(len(allRows[rowIdx])):
                         d[col_names[colIdx]] = allRows[rowIdx][colIdx]
                     mappedRows.append(d)
-                return 'DONE',mappedRows
+                return mappedRows
 
-            return 'DONE',allRows
-        except  Exception as Err:
-            logger.info('Error: %s' % Err)
-            return  'ERROR',None
+            return allRows
         finally:
             if cur:
-                if not sansTran:                    
+                if not sansTran:
                     connection.rollback()
 
     def row_count(self,alias, selectStatement, sansTran=False):
@@ -114,7 +111,7 @@ class Query(object):
         """
         cur = None
         try:
-            connection = self._cache.switch(alias)
+            connection,module_api = self._get_cache(alias) 
             cur = connection.cursor()
             logger.info('Executing : Row Count  |  %s ' % selectStatement)
             
@@ -122,16 +119,11 @@ class Query(object):
             data = cur.fetchall()
             logger.info(data)
             
-            if self.db_api_module_name in ["sqlite3", "ibm_db", "ibm_db_dbi", "pyodbc"]:
+            if module_api in ["sqlite3", "ibm_db", "ibm_db_dbi", "pyodbc"]:
                 rowCount = len(data)
             else:
                 rowCount = cur.rowcount 
-
-            logger.info(rowCount)               
-            return 'DONE',rowCount
-        except  Exception as Err:
-            logger.info('Error: %s' % Err)
-            return  'ERROR',None            
+            return rowCount
         finally:
             if cur:
                 if not sansTran:
@@ -160,7 +152,7 @@ class Query(object):
         """
         cur = None
         try:
-            connection = self._cache.switch(alias)
+            connection,module_api = self._get_cache(alias)            
             cur = connection.cursor()
             logger.info('Executing : Description  |  %s ' % selectStatement)
             self.__execute_sql(cur, selectStatement)
@@ -196,7 +188,7 @@ class Query(object):
         cur = None
         selectStatement = ("DELETE FROM %s;" % tableName)
         try:
-            connection = self._cache.switch(alias)
+            connection,module_api = self._get_cache(alias)     
             cur = connection.cursor()
             logger.info('Executing : Delete All Rows From Table  |  %s ' % selectStatement)
             result = self.__execute_sql(cur, selectStatement)
@@ -272,7 +264,7 @@ class Query(object):
         cur = None
         result = 0
         try:
-            connection = self._cache.switch(alias)
+            connection,module_api = self._get_cache(alias)     
             cur = connection.cursor()
             logger.info('Executing : Execute SQL Script  |  %s ' % sqlScriptFileName)
             sqlStatement = ''
@@ -333,7 +325,7 @@ class Query(object):
         cur = None
         result = 0
         try:
-            connection = self._cache.switch(alias)
+            connection,module_api = self._get_cache(alias)     
             cur = connection.cursor()
             logger.info('Executing : Execute SQL String  |  %s ' % sqlString)
             result = self.__execute_sql(cur, sqlString)
@@ -372,8 +364,8 @@ class Query(object):
             spParams = []
         cur = None
         try:
-            connection = self._cache.switch(alias)
-            if self.db_api_module_name in ["cx_Oracle"]:
+            connection,module_api = self._get_cache(alias)     
+            if module_api in ["cx_Oracle"]:
                 cur = connection.cursor()
             else:
                 cur = connection.cursor(as_dict=False)

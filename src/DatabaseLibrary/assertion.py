@@ -181,7 +181,7 @@ class Assertion(object):
         | Row Count Is Less Than X | SELECT id FROM person | 3 | True |
         """
         logger.info('Executing : Row Count Is Less Than X  |  %s  |  %s ' % (selectStatement, numRows))
-        status,num_rows = self.row_count(alias,selectStatement, sansTran)
+        num_rows = self.row_count(alias,selectStatement, sansTran)
         logger.info('Row Num: %s ' % str(num_rows))
         if num_rows >= int(numRows.encode('ascii')):
             raise AssertionError("Expected less rows to be returned from '%s' "
@@ -205,15 +205,18 @@ class Assertion(object):
         | Table Must Exist | person | True |
         """
         logger.info('Executing : Table Must Exist  |  %s ' % tableName)
-        if self.db_api_module_name in ["cx_Oracle"]:
+
+        connection,module_api = self._get_cache(alias)     
+
+        if module_api in ["cx_Oracle"]:
             selectStatement = ("SELECT * FROM all_objects WHERE object_type IN ('TABLE','VIEW') AND owner = SYS_CONTEXT('USERENV', 'SESSION_USER') AND object_name = UPPER('%s')" % tableName)
-        elif self.db_api_module_name in ["sqlite3"]:
+        elif module_api in ["sqlite3"]:
             selectStatement = ("SELECT name FROM sqlite_master WHERE type='table' AND name='%s' COLLATE NOCASE" % tableName)
-        elif self.db_api_module_name in ["ibm_db", "ibm_db_dbi"]:
+        elif module_api in ["ibm_db", "ibm_db_dbi"]:
             selectStatement = ("SELECT name FROM SYSIBM.SYSTABLES WHERE type='T' AND name=UPPER('%s')" % tableName)
         else:
             selectStatement = ("SELECT * FROM information_schema.tables WHERE table_name='%s'" % tableName)
-        status,num_rows = self.row_count(alias,selectStatement, sansTran)
+        num_rows = self.row_count(alias,selectStatement, sansTran)
         logger.info('Row Num: %s ' % str(num_rows))
         if num_rows == 0:
             raise AssertionError("Table '%s' does not exist in the db" % tableName)

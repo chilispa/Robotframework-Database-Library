@@ -34,12 +34,21 @@ class ConnectionManager(object):
         """
         Initializes _dbconnection to None.
         """
-
         self._cache = robot.utils.ConnectionCache('No connection created')
         self.builtin = BuiltIn()      
-        
-        #self._dbconnection = None
         self.db_api_module_name = None
+    
+    def _push_cache (self, alias, connection,db_api_module_name):
+        obj_dict = {'connection':connection, 'module':db_api_module_name}        
+        self._cache.register(obj_dict, alias=alias)
+
+    def _get_cache (self,alias):
+        obj_dict = self._cache.switch(alias)
+        dbconnection = obj_dict['connection']
+        db_api_module_name = obj_dict['module']
+
+        return dbconnection,db_api_module_name
+
 
     def connect_to_database(self,alias, dbapiModuleName=None, dbName=None, dbUsername=None, dbPassword=None, dbHost=None, dbPort=None, dbCharset=None, dbConfigFile="./resources/db.cfg"):
         
@@ -184,7 +193,8 @@ class ConnectionManager(object):
                 dbconnection = db_api_2.connect(database=dbName, user=dbUsername, password=dbPassword, host=dbHost, port=dbPort)
 
 
-            self._cache.register(dbconnection, alias=alias)
+            self._push_cache(alias, dbconnection,dbapiModuleName)
+            #self._cache.register(dbconnection, alias=alias)
 
         except Exception as Err:
             err_msg = ('DbConnection : %s : %s' % (alias,Err))           
@@ -217,7 +227,7 @@ class ConnectionManager(object):
         logger.info('Executing : Connect To Database Using Custom Params : %s.connect(%s) ' % (dbapiModuleName, db_connect_string))
         dbconnection = eval(db_connect_string)
 
-        self._cache.register(dbconnection, alias=alias)
+        self._push_cache(alias, dbconnection,dbapiModuleName)
 
     def disconnect_from_database(self,alias):
         """
@@ -227,7 +237,7 @@ class ConnectionManager(object):
         | Disconnect From Database | # disconnects from current connection to the database |
         """
         logger.info('Executing : Disconnect From Database')
-        connection = self._cache.switch(alias)
+        connection,module_api = self._get_cache(alias)
         connection.close()
 
 
@@ -248,7 +258,7 @@ class ConnectionManager(object):
         | Set Auto Commit | False
         """
         logger.info('Executing : Set Auto Commit')
-        connection = self._cache.switch(alias)
+        connection,module_api = self._get_cache(alias)
         connection.autocommit = autoCommit
         #self._cache.register(connection, alias=alias)
 
