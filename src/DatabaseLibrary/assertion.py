@@ -41,9 +41,7 @@ class Assertion(object):
         Using optional `sansTran` to run command without an explicit transaction commit or rollback:
         | Check If Exists In Database | SELECT id FROM person WHERE first_name = 'John' | True |
         """
-        logger.info('Executing : Check If Exists In Database  |  %s ' %
-                    selectStatement)
-        logger.info('Connection:  Check If Exists In Database |  %s' % alias)
+        logger.info('Executing : Check If Exists In Database  |  %s  |  %s  ' % (selectStatement,alias))
 
         if not self.query(selectStatement=selectStatement, sansTran=sansTran, alias=alias):
             raise AssertionError("Expected to have have at least one row from '%s' "
@@ -73,7 +71,7 @@ class Assertion(object):
         | Check If Not Exists In Database | SELECT id FROM person WHERE first_name = 'John' | True |
         """
         logger.info(
-            'Executing : Check If Not Exists In Database  |  %s ' % selectStatement)
+            'Executing : Check If Not Exists In Database  |  %s  |  %s  ' % (selectStatement,alias))        
         queryResults = self.query(
             selectStatement=selectStatement, sansTran=sansTran, alias=alias)
         if queryResults:
@@ -101,7 +99,9 @@ class Assertion(object):
         Using optional `sansTran` to run command without an explicit transaction commit or rollback:
         | Row Count is 0 | SELECT id FROM person WHERE first_name = 'John' | True |
         """
-        logger.info('Executing : Row Count Is 0  |  %s ' % selectStatement)
+        logger.info('Executing : Row Count Is 0  |  %s  |  %s  ' % (selectStatement,alias))
+        logger.info(
+            'Connection:  Row Count Is 0  |  %s' % alias)        
         num_rows = self.row_count(selectStatement, sansTran, alias)
         if num_rows > 0:
             raise AssertionError("Expected zero rows to be returned from '%s' "
@@ -129,8 +129,9 @@ class Assertion(object):
         Using optional `sansTran` to run command without an explicit transaction commit or rollback:
         | Row Count Is Equal To X | SELECT id FROM person WHERE first_name = 'John' | 0 | True |
         """
-        logger.info('Executing : Row Count Is Equal To X  |  %s  |  %s ' %
-                    (selectStatement, numRows))
+        logger.info('Executing : Row Count Is Equal To X  |  %s  |  %s |  %s  ' %
+                    (selectStatement, numRows,alias))
+
         num_rows = self.row_count(selectStatement, sansTran, alias)
         if num_rows != int(numRows.encode('ascii')):
             raise AssertionError("Expected same number of rows to be returned from '%s' "
@@ -158,8 +159,9 @@ class Assertion(object):
         Using optional `sansTran` to run command without an explicit transaction commit or rollback:
         | Row Count Is Greater Than X | SELECT id FROM person | 1 | True |
         """
-        logger.info('Executing : Row Count Is Greater Than X  |  %s  |  %s ' % (
-            selectStatement, numRows))
+        logger.info('Executing : Row Count Is Greater Than X  |  %s  |  %s  |  %s  ' % (
+            selectStatement, numRows,alias))
+            
         num_rows = self.row_count(selectStatement, sansTran, alias)
         if num_rows <= int(numRows.encode('ascii')):
             raise AssertionError("Expected more rows to be returned from '%s' "
@@ -187,8 +189,8 @@ class Assertion(object):
         Using optional `sansTran` to run command without an explicit transaction commit or rollback:
         | Row Count Is Less Than X | SELECT id FROM person | 3 | True |
         """
-        logger.info('Executing : Row Count Is Less Than X  |  %s  |  %s ' % (
-            selectStatement, numRows))
+        logger.info('Executing : Row Count Is Less Than X  |  %s  |  %s  |  %s  ' % (
+            selectStatement, numRows,alias))
         num_rows = self.row_count(selectStatement, sansTran, alias)
         logger.info('Row Num: %s ' % str(num_rows))
         if num_rows >= int(numRows.encode('ascii')):
@@ -212,8 +214,7 @@ class Assertion(object):
         Using optional `sansTran` to run command without an explicit transaction commit or rollback:
         | Table Must Exist | person | True |
         """
-        logger.info('Executing : Table Must Exist  |  %s ' % tableName)
-        logger.info('DbConnection: %s' % alias)
+        logger.info('Executing : Table Must Exist  |  %s  |  %s  ' % (tableName,alias))        
 
         connection, module_api = self._get_cache(alias)
 
