@@ -17,12 +17,13 @@ from robot.api import logger
 import robot
 from robot.libraries.BuiltIn import BuiltIn
 
+
 class Query(object):
     """
     Query handles all the querying done by the Database Library.
     """
 
-    def query(self,alias, selectStatement, sansTran=False, returnAsDict=False):
+    def query(self, selectStatement, sansTran=False, returnAsDict=False, alias=None):
         """
         Uses the input `selectStatement` to query for the values that will be returned as a list of tuples. Set optional
         input `sansTran` to True to run command without an explicit transaction commit or rollback.
@@ -57,8 +58,11 @@ class Query(object):
         | @{queryResults} | Query | SELECT * FROM person | True |
         """
         cur = None
+        logger.info('Connection: Query  | %s' % alias)
+
         try:
-            connection,module_api = self._get_cache(alias)
+            connection, module_api = self._get_cache(alias)
+            logger.info('Module: Query | %s' % module_api)
             cur = connection.cursor()
             logger.info('Executing : Query  |  %s ' % selectStatement)
             self.__execute_sql(cur, selectStatement)
@@ -67,8 +71,6 @@ class Query(object):
             if returnAsDict:
                 mappedRows = []
                 col_names = [c[0] for c in cur.description]
-
-
                 for rowIdx in range(len(allRows)):
                     d = {}
                     for colIdx in range(len(allRows[rowIdx])):
@@ -82,10 +84,10 @@ class Query(object):
                 if not sansTran:
                     connection.rollback()
 
-    def row_count(self,alias, selectStatement, sansTran=False):
+    def row_count(self, selectStatement, sansTran=False, alias=None):
         """
-        Uses the input `selectStatement` to query the database and returns the number of rows from the query. Set
-        optional input `sansTran` to True to run command without an explicit transaction commit or rollback.
+        Uses the input `selectStatement` to query the database and returns the number of rows from the query. 
+        Set optional input `sansTran` to True to run command without an explicit transaction commit or rollback.
 
         For example, given we have a table `person` with the following data:
         | id | first_name  | last_name |
@@ -111,25 +113,23 @@ class Query(object):
         """
         cur = None
         try:
-            connection,module_api = self._get_cache(alias) 
+            connection, module_api = self._get_cache(alias)
             cur = connection.cursor()
             logger.info('Executing : Row Count  |  %s ' % selectStatement)
-            
+
             self.__execute_sql(cur, selectStatement)
             data = cur.fetchall()
-            logger.info(data)
-            
             if module_api in ["sqlite3", "ibm_db", "ibm_db_dbi", "pyodbc"]:
                 rowCount = len(data)
             else:
-                rowCount = cur.rowcount 
+                rowCount = cur.rowcount
             return rowCount
         finally:
             if cur:
                 if not sansTran:
                     connection.rollback()
 
-    def description(self,alias, selectStatement, sansTran=False):
+    def description(self, selectStatement, sansTran=False, alias=None):
         """
         Uses the input `selectStatement` to query a table in the db which will be used to determine the description. Set
         optional input `sansTran` to True to run command without an explicit transaction commit or rollback.
@@ -152,21 +152,22 @@ class Query(object):
         """
         cur = None
         try:
-            connection,module_api = self._get_cache(alias)            
+            connection, module_api = self._get_cache(alias)
             cur = connection.cursor()
             logger.info('Executing : Description  |  %s ' % selectStatement)
             self.__execute_sql(cur, selectStatement)
             description = list(cur.description)
             if sys.version_info[0] < 3:
                 for row in range(0, len(description)):
-                    description[row] = (description[row][0].encode('utf-8'),) + description[row][1:]
+                    description[row] = (description[row][0].encode(
+                        'utf-8'),) + description[row][1:]
             return description
         finally:
             if cur:
                 if not sansTran:
                     connection.rollback()
 
-    def delete_all_rows_from_table(self,alias, tableName, sansTran=False):
+    def delete_all_rows_from_table(self, tableName, sansTran=False, alias=None):
         """
         Delete all the rows within a given table. Set optional input `sansTran` to True to run command without an
         explicit transaction commit or rollback.
@@ -188,9 +189,10 @@ class Query(object):
         cur = None
         selectStatement = ("DELETE FROM %s;" % tableName)
         try:
-            connection,module_api = self._get_cache(alias)     
+            connection, module_api = self._get_cache(alias)
             cur = connection.cursor()
-            logger.info('Executing : Delete All Rows From Table  |  %s ' % selectStatement)
+            logger.info(
+                'Executing : Delete All Rows From Table  |  %s ' % selectStatement)
             result = self.__execute_sql(cur, selectStatement)
             if result is not None:
                 if not sansTran:
@@ -203,7 +205,7 @@ class Query(object):
                 if not sansTran:
                     connection.rollback()
 
-    def execute_sql_script(self,alias, sqlScriptFileName, sansTran=False):
+    def execute_sql_script(self, sqlScriptFileName, sansTran=False, alias=None):
         """
         Executes the content of the `sqlScriptFileName` as SQL commands and
         returns number of rows affected. Useful for setting the database to
@@ -264,9 +266,10 @@ class Query(object):
         cur = None
         result = 0
         try:
-            connection,module_api = self._get_cache(alias)     
+            connection, module_api = self._get_cache(alias)
             cur = connection.cursor()
-            logger.info('Executing : Execute SQL Script  |  %s ' % sqlScriptFileName)
+            logger.info('Executing : Execute SQL Script  |  %s ' %
+                        sqlScriptFileName)
             sqlStatement = ''
             for line in sqlScriptFile:
                 PY3K = sys.version_info >= (3, 0)
@@ -277,7 +280,6 @@ class Query(object):
                     continue
                 elif line.startswith('--'):
                     continue
-
                 sqlFragments = line.split(';')
                 if len(sqlFragments) == 1:
                     sqlStatement += line + ' '
@@ -286,9 +288,7 @@ class Query(object):
                         sqlFragment = sqlFragment.strip()
                         if len(sqlFragment) == 0:
                             continue
-
                         sqlStatement += sqlFragment + ' '
-
                         result = result + self.__execute_sql(cur, sqlStatement)
                         sqlStatement = ''
 
@@ -304,7 +304,7 @@ class Query(object):
                     connection.rollback()
         return result
 
-    def execute_sql_string(self,alias, sqlString, sansTran=False):
+    def execute_sql_string(self, sqlString, sansTran=False, alias=None):
         """
         Executes the sqlString as SQL commands  and returns number of rows
         affected. Useful to pass arguments to your sql. Set optional input
@@ -325,7 +325,7 @@ class Query(object):
         cur = None
         result = 0
         try:
-            connection,module_api = self._get_cache(alias)     
+            connection, module_api = self._get_cache(alias)
             cur = connection.cursor()
             logger.info('Executing : Execute SQL String  |  %s ' % sqlString)
             result = self.__execute_sql(cur, sqlString)
@@ -337,7 +337,7 @@ class Query(object):
                     connection.rollback()
         return result
 
-    def call_stored_procedure(self,alias, spName, spParams=None, sansTran=False):
+    def call_stored_procedure(self, spName, spParams=None, sansTran=False, alias=None):
         """
         Uses the inputs of `spName` and 'spParams' to call a stored procedure. Set optional input `sansTran` to
         True to run command without an explicit transaction commit or rollback.
@@ -364,7 +364,7 @@ class Query(object):
             spParams = []
         cur = None
         try:
-            connection,module_api = self._get_cache(alias)     
+            connection, module_api = self._get_cache(alias)
             if module_api in ["cx_Oracle"]:
                 cur = connection.cursor()
             else:
@@ -372,15 +372,15 @@ class Query(object):
             PY3K = sys.version_info >= (3, 0)
             if not PY3K:
                 spName = spName.encode('ascii', 'ignore')
-            logger.info('Executing : Call Stored Procedure  |  %s  |  %s ' % (spName, spParams))
+            logger.info(
+                'Executing : Call Stored Procedure  |  %s  |  %s ' % (spName, spParams))
             cur.callproc(spName, spParams)
             cur.nextset()
-            retVal=list()
+            retVal = list()
             for row in cur:
-                #logger.info ( ' %s ' % (row))
                 retVal.append(row)
             if not sansTran:
-               connection.commit()
+                connection.commit()
             return retVal
         finally:
             if cur:
